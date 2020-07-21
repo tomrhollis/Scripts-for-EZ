@@ -5,6 +5,8 @@ These are scripts I use on my personal server, provided as examples or for free 
 
 Index.js imports a few scripts which can be found at <a href="https://github.com/HongyiMC/EZ-Scripts">HongyiMC's GitHub</a>
 
+Scripts in this repository:
+
 * Index.js: Main server script
 * ChatMgr.js: Chat manager script
 * Hax.js: Hack retaliation script
