@@ -18,9 +18,10 @@ import {
 
 const system = server.registerSystem(0, 0);
 
-var dimensions = ["overworld", "nether", "end"];
+const dimensions = ["overworld", "nether", "end"];
 var claims = [];
 
+// set up the database and initialize the claims list from it
 try{
 	var landDB = open("land.db");
 	landDB.exec("CREATE TABLE IF NOT EXISTS land (" +
@@ -36,6 +37,7 @@ try{
 	console.error(err);
 }
 
+// apply adventure mode to people in other people's claims
 function guardClaims() {	
 	try{
 		// start fresh
@@ -59,6 +61,7 @@ function guardClaims() {
 	}
 }
 
+// get claims from DB query
 function loadClaims(){
 	claims=[];
 	claimQuery.forEach((cid,xid,d,cx,cz,r)=>{
@@ -67,7 +70,9 @@ function loadClaims(){
 	});
 }
 
+// validate claim and add it to the DB
 async function addClaim(player, x, z, r){
+	// check dimension & admin status
 	let overworld = await hasTag(player, "overworld");
 	let nether = await hasTag(player, "nether");
 	let end = await hasTag(player, "end");
@@ -75,6 +80,7 @@ async function addClaim(player, x, z, r){
 	let dim = 0;
 	r = (admin) ? r : 32;
 	
+	// set dimension
 	if (overworld){	// nothing
 	} else if (nether) {
 		dim = 1;
@@ -86,20 +92,16 @@ async function addClaim(player, x, z, r){
 	
 	// check if that xuid already has a claim or the claim overlaps any other
 	for(let claim of claims){
-		console.log("in addclaim before claim checks");
 		if(!admin && claim.xuid == playerObj.xuid){
 			system.executeCommand(`tellraw ${player} {"rawtext": [{"text": "§cYou already have a claim. Abandon your claim if you want this area. (Multiple claims will come later)"}]}`, () => {});
 			return;
 		}
 		if (!((x - r) >= (claim.center_x + claim.radius) || (claim.center_x - claim.radius) >= (x + r) ||
 		   (z - r) <= (claim.center_z + claim.radius) || (claim.center_z - claim.radius) <= (z + r))){
-			console.log(JSON.stringify(claim));
-			console.log(player + " " + x + " " + z + " " + r);
 			system.executeCommand(`tellraw ${player} {"rawtext": [{"text": "§cThis area overlaps another claim. Please try another area."}]}`, () => {});
 			return;
 		}
 	}
-	console.log("in addclaim before DB insert");
 	// if all good, create claim: add it to db and refresh the claims list
 	try{
 		landDB.exec(`INSERT INTO land(xuid, dim, center_x, center_z, radius) VALUES(${playerObj.xuid}, ${dim}, ${x}, ${z}, ${r});`);
@@ -109,9 +111,9 @@ async function addClaim(player, x, z, r){
 	} catch(err) {
 		console.error(err);
 	}
-	console.log("in addclaim after DB insert");	
 }
 
+// remove all of a person's claims from DB
 function removeClaim(player){
 	let playerObj = getPlayerByNAME(player);
 	landDB.exec(`DELETE FROM land WHERE xuid='${playerObj.xuid}'`);
@@ -120,6 +122,7 @@ function removeClaim(player){
 	});
 }
 
+// check if a player has a particular tag
 function hasTag(player, tag){
 	return new Promise(resolve => {
 		system.executeCommand(`tag "${player}" list`, (result) => {
@@ -130,11 +133,12 @@ function hasTag(player, tag){
 	});
 }
 
+// make sure people aren't screwing with people's stuff in their claims
 system.listenForEvent("minecraft:block_interacted_with", async (eventData) => {
 	let name = system.getComponent(eventData.data.player, "minecraft:nameable").data.name;
 	let notAllowed = await hasTag(name, "inClaim");
 	if (notAllowed){
-		try{
+		try{	// shake them out of the chest/anvil/whatever UI by teleporting them way up and back down really fast
 			let pos = system.getComponent(eventData.data.player, "minecraft:position").data;
 			system.executeCommand(`execute ${name} ${pos.x} ${pos.y} ${pos.z} tp ~ 256 ~`, ()=>{
 				system.executeCommand(`tp ${name} ${pos.x} ${pos.y} ${pos.z}`, ()=>{});
@@ -146,6 +150,7 @@ system.listenForEvent("minecraft:block_interacted_with", async (eventData) => {
 	}
 });
 
+// implement the dot commands
 onChat(async (chatLine) => {
 	let command = chatLine.content.trim().split(' ');
 	let wild = await hasTag(chatLine.sender, "wild");
@@ -163,7 +168,7 @@ onChat(async (chatLine) => {
 		case "unclaim":
 			removeClaim(chatLine.sender);
 			break;
-	/*  case "list":
+  	    /*  case "list":
 			break;
 		case "outline":
 			break;	*/		
@@ -179,6 +184,8 @@ onChat(async (chatLine) => {
 	}
 }); 
 
+// run the claim guardian every 7 ticks
+var totalTicks = 0;
 system.update = function() {
 	totalTicks++;
 	
