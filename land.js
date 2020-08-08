@@ -160,7 +160,6 @@ onChat(async (chatLine) => {
 			let r = (!isNaN(parseInt(command[4]))) ? command[4] : 32;
 			if(!isNaN(parseInt(command[2])) && !isNaN(parseInt(command[3]))) {				
 				await addClaim(chatLine.sender, command[2], command[3], r);
-				console.log("after addclaim");
 			} else {
 				system.executeCommand(`tellraw ${chatLine.sender} {"rawtext": [{"text": "§cUse the format §e.land claim <x> <z>"}]}`, () => {});
 			}
