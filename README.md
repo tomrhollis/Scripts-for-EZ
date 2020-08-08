@@ -11,3 +11,4 @@ Scripts in this repository:
 * ChatMgr.js: Chat manager script
 * Hax.js: Hack retaliation script
 * RtpButton.js: Backend code for RTP buttons
+* Land.js: Very basic land claim system
